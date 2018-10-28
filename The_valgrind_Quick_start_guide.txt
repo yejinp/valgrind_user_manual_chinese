@@ -1,0 +1,106 @@
+The Valgrind Quick Start Guide
+Valgrind 快速使用指南
+
+Release 3.14.0 9 October 2018
+发布版本号： 3.14.0  2018年十月9日
+
+Copyright © 2000-2018 Valgrind Developers
+版权 2000-2018 valgrind开发人员所有
+Email: valgrind@valgrind.org
+邮箱： valgrind@valgrind.org
+
+
+Table of Contents
+目录
+
+The Valgrind Quick Start Guide . . . . . . . . . . . . . 1
+Valgrind 快速使用指导
+1. Introduction . . . . . . . . .. . . . . . . . . . . . 1
+1. 介绍
+2. Preparing your program . . . .. . . . . . . . . . . . 1
+2. 准备你的程序
+3. Running your program under Memcheck . . . . . . . . . 1
+3. 在Memcheck下运行你你程序
+4. Interpreting Memcheck’s output . . .. . . . . . . . . 1
+4. 解释 Memcheck的输出
+5. Caveats . . . . . . . . . . . . . . . . . . . . . . . 3
+5. 注意事项
+6. More information . . . . . . . . . .. . . . . . . . . 3
+6. 更多信息
+
+The Valgrind Quick Start Guide
+Valgrind快速使用指导
+
+1. Introduction
+1. 介绍
+The Valgrind tool suite provides a number of debugging and profiling tools that help you make your programs faster and more correct. The most popular of these tools is called Memcheck. It can detect many memory-related errors that are common in C and C++ programs and that can lead to crashes and unpredictable behaviour.
+Valgrind工具集提供了多个调试和剖析工具，这些工具可以让你的程序更快更正确。其中最流行的工具叫做Memcheck。 它可以检测出很多内存相关的错误，这些错误在C和c++程序中很常见，并且能导致程序奔溃或者不可预料的行为。
+The rest of this guide gives the minimum information you need to start detecting memory errors in your program with Memcheck. For full documentation of Memcheck and the other tools, please read the User Manual.
+本指导其他部分提供了很少的信息，这些信息是你需要用Memcheck来启动检测你程序中的内存错误。Memceck的完整和其他工具请参考用户手册。
+2. Preparing your program
+2.准备你的程序
+Compile your program with -g to include debugging information so that Memcheck’s error messages include exact line numbers. Using -O0 is also a good idea, if you can tolerate the slowdown. With -O1 line numbers in error messages can be inaccurate, although generally speaking running Memcheck on code compiled at -O1 works fairly well, and the speed improvement compared to running -O0 is quite significant. Use of -O2 and above is not recommended as Memcheck occasionally reports uninitialised-value errors which don’t really exist.
+编译程序时加上-g选项，以便包含调试信息，用于Memcheck错误选项，包含确切的行号等。使用-O0也是个不错的主意，如果你可以忍受它带来的减速的话。 使用-O1，错误选项中的行号可能不准确，虽然一般来说运行Memcheck在代码上使用-O1来编译能工作得很好，并且与选项-O0比较，速度上有较为显著的提升。由于Memcheck偶尔会报告不存在的未初始化值问题，因此不推荐使用选项-O2及以上的编译选项。
+
+3. Running your program under Memcheck
+3. 在Memcheck下运行你的程序
+If you normally run your program like this:
+如果你的程序一般是这样运行的:
+myprog arg1 arg2
+Use this command line:
+使用命令行:
+valgrind --leak-check=yes myprog arg1 arg2
+
+Memcheck is the default tool. The --leak-check option turns on the detailed memory leak detector.
+Memcheck是默认工具， --leak-check选项可以打开内存泄露检测器的输出更细化。
+Your program will run much slower (eg. 20 to 30 times) than normal, and use a lot more memory. Memcheck will issue messages about memory errors and leaks that it detects.
+你的程序将比一般运行的时候更慢(20到30倍)，并且使用更多的内存。Memcheck将报告其检查出的内存错误和内存泄露。
+
+4. Interpreting Memcheck’s output
+4. Memcheck的输出说明
+Here’s an example C program, in a file called a.c, with a memory error and a memory leak.
+这里是一个C程序例子，在文件名未a.c中，有一个内存错误和内存泄露。
+
+#include <stdlib.h>
+void f(void)
+{
+    int* x = malloc(10 * sizeof(int));
+    x[10] = 0;
+    // problem 1: heap block overrun
+}
+
+// problem 2: memory leak -- x not freed
+int main(void)
+{
+    f();
+    return 0;
+}
+
+Most error messages look like the following, which describes problem 1, the heap block overrun:
+最多的错误消息看起来如下，其描述问题1，堆内存越界：
+==19182== Invalid write of size 4
+==19182== at 0x804838F: f (example.c:6)
+==19182== by 0x80483AB: main (example.c:11)
+==19182== Address 0x1BA45050 is 0 bytes after a block of size 40 alloc’d
+==19182== at 0x1B8FF5CD: malloc (vg_replace_malloc.c:130)
+==19182== by 0x8048385: f (example.c:5)
+==19182== by 0x80483AB: main (example.c:11)
+
+
+Things to notice:
+注意：
+• There is a lot of information in each error message; read it carefully.
+每一个错误消息都提供了很多的消息，请仔细阅读。
+• The 19182 is the process ID; it’s usually unimportant.
+19182是进程ID号，他通常都不是很重要。
+• The first line ("Invalid write...") tells you what kind of error it is.
+首行('Invalid write...') 告诉你这个错误的类型。
+Here, the program wrote to some memory it should not have due to a heap block overrun.
+这里，程序将写入其由于内存堆越界导致的内存中。
+• Below the first line is a stack trace telling you where the problem occurred. Stack traces can get quite large, and be confusing, especially if you are using the C++ STL. Reading them from the bottom up can help. If the stack trace is not big enough, use the --num-callers option to make it bigger.
+下面的第一行首行一个栈跟踪消息，告诉你错误在那个地方。栈跟踪消息可能很长，也不容易理解，特别首行当程序使用C++的STL编写的时候。从下往上读栈跟踪消息可以提供帮助。如果栈跟踪消息不是足够的多，使用--num-callers选项将让他更多。
+• The code addresses (eg. 0x804838F) are usually unimportant, but occasionally crucial for tracking down weirder bugs.
+代码地址（比如， 0x804838F)通常不是很重要，但偶尔会堆定位奇怪的bug将很关键。
+• Some error messages have a second component which describes the memory address involved. This one shows that the written memory is just past the end of a block allocated with malloc() on line 5 of example.c.
+有些错误消息还有第二部分，他描述涉及到的内存地址。这个例子中显示，写内存只是将使用malloc分配的内存块在例子example.c中的第五行。
+
