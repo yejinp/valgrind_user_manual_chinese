@@ -104,3 +104,25 @@ Here, the program wrote to some memory it should not have due to a heap block ov
 • Some error messages have a second component which describes the memory address involved. This one shows that the written memory is just past the end of a block allocated with malloc() on line 5 of example.c.
 有些错误消息还有第二部分，他描述涉及到的内存地址。这个例子中显示，写内存只是将使用malloc分配的内存块在例子example.c中的第五行。
 
+It’s worth fixing errors in the order they are reported, as later errors can be caused by earlier errors. Failing to do this is a common cause of difficulty with Memcheck.
+从前往后地修复报告中的错误是值得的，由于后面的错误可能是由于前面的错误引起的。不这样做是Memcheck的常见不同。
+Memory leak messages look like this:
+==19182== 40 bytes in 1 blocks are definitely lost in loss record 1 of 1
+==19182== at 0x1B8FF5CD: malloc (vg_replace_malloc.c:130)
+==19182== by 0x8048385: f (a.c:5)
+==19182== by 0x80483AB: main (a.c:11)
+
+
+The stack trace tells you where the leaked memory was allocated. Memcheck cannot tell you why the memory leaked, unfortunately. (Ignore the "vg_replace_malloc.c", that’s an implementation detail.)
+跟踪消息告诉你，那里有内存分配。不幸的是，Memcheck不能告诉你为什么内存泄露了。(忽略a.c中实现细节）
+There are several kinds of leaks; the two most important categories are:
+有几类内存泄露，最典型的是：
+• "definitely lost": your program is leaking memory -- fix it!
+• "definitely lost":你的程序有内存泄露，---修复它吧！ 
+• "probably lost": your program is leaking memory, unless you’re doing funny things with pointers (such as moving them to point to the middle of a heap block).
+• "probably lost": 你的程序有内存泄露，除非你使用指针做了写有趣的事情（比如，移动指针到堆块的中部）。
+
+Memcheck also reports uses of uninitialised values, most commonly with the message "Conditional jump or move depends on uninitialised value(s)". It can be difficult to determine the root cause of these errors. Try using the --track-origins=yes to get extra information. This makes Memcheck run slower, but the extra information you get often saves a lot of time figuring out where the uninitialised values are coming from.
+Memcheck也会报告未初始化值的使用，最常见的消息"添加跳转或者移动依赖于未初始化的值"。更慢的运行，但获取确切的消息通常也会节约很多找出哪些未初始化值从哪里来。 
+If you don’t understand an error message, please consult Explanation of error messages from Memcheck in the Valgrind User Manual which has examples of all the error messages Memcheck produces.
+如果你不理解错误消息，请
